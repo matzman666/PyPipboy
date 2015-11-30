@@ -5,7 +5,7 @@
 
 PyPipboy is a Python3 module implementing an event-driven, rich client for the Fallout 4 Companion App protocol. 
 
-It connects to a running Fallout 4[^fallout4] game (using the Companion App interface) and receives data from the game. 
+It connects to a running Fallout 4 game ([www.fallout4.com](https://www.fallout4.com/)) (using the Companion App interface) and receives data from the game. 
 This data can then be accessed using an event-driven interface. Furthermore it can also send commands to the game.
 
 # Features
@@ -83,5 +83,3 @@ I just fired up my favorite C#-Disassembler, disassembled that file and read the
 
 This software is released under GPL 3.0.
 
-
-[^fallout4]: [Fallout 4](https://www.fallout4.com/)
