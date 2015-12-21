@@ -111,6 +111,13 @@ class PipboyObjectValue(PipboyValue):
     def __init__(self, pipId):
         super(PipboyObjectValue, self).__init__(pipId, ePipboyValueType.OBJECT, eValueType.OBJECT, dict())
         self._orderedList = list()
+        keylist = list(self._value.keys())
+        keylist.sort()
+        i = 0
+        for r in keylist:
+            self._value[r].pipParentIndex = i
+            self._orderedList.append(self._value[r])
+            i += 1
         
     def childCount(self):
         return len(self._value)
@@ -403,7 +410,6 @@ class PipboyDataManager:
         if record.type == eValueType.OBJECT:
             if not recordExists:
                 obj = PipboyObjectValue(record.id)
-            keylist = list()
             for r in record.value[0]:
                 if not r[1] in self._valueMap:
                     raise RuntimeError('Tangling reference ' + str(r[1]))
@@ -411,10 +417,10 @@ class PipboyDataManager:
                 child.pipParent = obj
                 child.pipParentKey = r[0]
                 obj._value[r[0]] = child
-                keylist.append(r[0])
-            keylist.sort()
             i = 0
-            obj._orderedList = list()
+            keylist = list(obj._value.keys())
+            keylist.sort()
+            obj._orderedList.clear()
             for r in keylist:
                 obj._value[r].pipParentIndex = i
                 obj._orderedList.append(obj._value[r])
