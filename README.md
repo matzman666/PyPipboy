@@ -59,6 +59,9 @@ def rootObjectListener(rootObject):
     currHP = rootObject.child('PlayerInfo').child('CurrHP')
     currHP.registerValueUpdatedListener(currHpListener)
 ```
+To navigate to a specific value inside the tree, start from the top and navigate down on known paths. For example, to fetch an array with all map location markers, start with the root element you got from the root object event and retrieve the child 'Map'. Then, from the map object retrieve the child 'World', and finally 'Locations'. In short: rootObject.child('Map').child('World').child('Locations'). But don't forget to check whether a certain element already exists. For example, if the user stills linger around in the main menu and hasn't loaded a save at all, there is no 'World' object and you would get an exception. 
+
+When the user loads a new save, most values get invalidated and don't receive any events anymore. You need to fetch the new elements and re-register the event listeners with them. To know that the user loaded a new save, you need to register listeners with the parents (or their parents) of the values. It is not always easy to say (with the 'Locations' it is the 'Map' object) which parent persists a save load. I have also written another application "PyPipboyApp" (see link above), that allows you to browse the data and see the data updates. Use it to find out which value persists a save load.
 
 # API references
 

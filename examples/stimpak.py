@@ -26,6 +26,10 @@ def currHpListener(caller, pipvalue, pathObjs):
 def rootObjectListener(rootObject):
     playerInfo = rootObject.child('PlayerInfo')
     if playerInfo:
+        # Whenever the player loads a new game, the "currHP" object we are about to fetch 
+        # gets invalidated and we don't receive any event anymore.
+        # Therefore we also register an listener with the "PlayerInfo" object.
+        playerInfo.registerValueUpdatedListener(playerInfoReset)
         currHp = playerInfo.child('CurrHP')
         if currHp:
             print('Current Health: ', currHp.value())
@@ -35,6 +39,17 @@ def rootObjectListener(rootObject):
     else:
         print('No PlayerInfo found')
 
+# Save was loaded (or something else that caused to game to reset).
+# Refetch player health value and re-register listener.
+def playerInfoReset(caller, pipvalue, pathObjs):
+        currHp = pipvalue.child('CurrHP')
+        if currHp:
+            print('Current Health: ', currHp.value())
+            currHp.registerValueUpdatedListener(currHpListener)
+        else:
+            print('No Health Info found')
+    
+    
 
 
 hosts = pipboy.discoverHosts()
