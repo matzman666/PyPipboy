@@ -3,7 +3,7 @@
 import logging
 import json
 from pypipboy.types import eMessageType, eValueType, eRequestType
-from pypipboy.dataparser import DataUpdateParser, LocalMapUpdateParser
+from pypipboy.dataparser import DataUpdateParser, LocalMapUpdateParser, DataUpdateRecord
 from pypipboy.network import NetworkChannel, NetworkMessage
 
 
@@ -375,6 +375,44 @@ class PipboyDataManager:
     # resp: unknown
     def rpcSortInventory(self, index, callback = None):
         self.rpcSendRequest(eRequestType.SortInventory, [index], callback)
+    
+    
+    def exportData(self):
+        if self.rootObject:
+            pipValues = []
+            queue = [self.rootObject]
+            while len(queue) > 0:
+                obj = queue.pop(0)
+                if obj.pipType == ePipboyValueType.OBJECT:
+                    value = [[], []]
+                    for k in obj.value():
+                        child = obj.child(k)
+                        value[0].append((k, child.pipId))
+                        queue.append(child)
+                    pipValues.append([obj.pipId, obj.valueType, value])
+                elif obj.pipType == ePipboyValueType.ARRAY:
+                    value = []
+                    for child in obj.value():
+                        value.append(child.pipId)
+                        queue.append(child)
+                    pipValues.append((obj.pipId, obj.valueType, value))
+                else:
+                    pipValues.append((obj.pipId, obj.valueType, obj.value()))
+            return pipValues
+        else:
+            return []
+        
+    def importData(self, data):
+        # only import when no active connection
+        if  not self._connectionEstablished:
+            self._valueMap = dict()
+            self.rootObject = None
+            for record in data:
+                self._onRecordParsed(DataUpdateRecord(record[0], record[1], record[2]))
+            return True
+        else:
+            return False
+            
         
     ######## Internals Begin ##############
         
