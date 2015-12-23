@@ -52,6 +52,9 @@ class PipboyDataManager:
     # unregisters a local map listener
     def unregisterLocalMapListener(self, listener)
     
+    # Returns the value with the given pipId
+    def getPipValueById(self, pipId):
+    
     # Sets the custom marker on the map
     def rpcSetCustomMarker(self, x, y)
     

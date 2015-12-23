@@ -2,6 +2,7 @@
 
 import logging
 import json
+import threading
 from pypipboy.types import eMessageType, eValueType, eRequestType
 from pypipboy.dataparser import DataUpdateParser, LocalMapUpdateParser, DataUpdateRecord
 from pypipboy.network import NetworkChannel, NetworkMessage
@@ -37,6 +38,7 @@ class PipboyValue(object):
         self.valueType = valueType
         self._value = value
         self._valueUpdatedListeners = dict()
+        self._listenerLock = threading.Lock()
     
     # registers a value updated event listener
     #    depth: to with depth should events from children be reported
@@ -46,14 +48,18 @@ class PipboyValue(object):
     #    value: changed value
     #    pathobj: list of values lying on the path from event origin to reporter
     def registerValueUpdatedListener(self, listener, depth = 0):
+        self._listenerLock.acquire()
         self._valueUpdatedListeners[listener] = depth
+        self._listenerLock.release()
     
     # registers a value updated event listener
     def unregisterValueUpdatedListener(self, listener):
+        self._listenerLock.acquire()
         try:
             del self._valueUpdatedListeners[listener]
         except:
             pass
+        self._listenerLock.release()
     
     # Returns the value
     def value(self):
@@ -84,6 +90,7 @@ class PipboyValue(object):
         
     # Internal function emitting value updated events
     def _fireValueUpdatedEvent(self, value, pathObjs = list(), depth = 0):
+        self._listenerLock.acquire()
         for listener in self._valueUpdatedListeners:
             if self._valueUpdatedListeners[listener] < 0 or self._valueUpdatedListeners[listener] >= depth:
                 listener(self, value, pathObjs)
@@ -91,6 +98,7 @@ class PipboyValue(object):
             newPathObjs = list(pathObjs)
             newPathObjs.append(self)
             self.pipParent._fireValueUpdatedEvent(value, newPathObjs, depth + 1)
+        self._listenerLock.release()
             
     # Overriden function to have nicer str() outputs
     def __repr__(self):
@@ -242,6 +250,13 @@ class PipboyDataManager:
             self._localMapListeners.remove(listener)
         except:
             pass
+    
+    # Returns the value with the given pipId
+    def getPipValueById(self, pipId):
+        try:
+            return self._valueMap[pipId]
+        except:
+            return None
     
 
     def rpcSendRequest(self, reqtype, args = list(), callback = None):
