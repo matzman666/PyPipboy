@@ -27,6 +27,11 @@ class eValueUpdatedEventType:
 
 # PipboyValue base class
 class PipboyValue(object):
+    class _UserCacheEntry:
+        def __init__(self, value, invalidateDepth):
+            self.value = value
+            self.invalidateDepth = invalidateDepth
+            self.dirtyFlag = False
     
     # constructor
     def __init__(self, pipId, pipType, valueType, value):
@@ -37,6 +42,7 @@ class PipboyValue(object):
         self.pipType = pipType
         self.valueType = valueType
         self._value = value
+        self._userCache = dict()
         self._valueUpdatedListeners = dict()
         self._listenerLock = threading.Lock()
     
@@ -87,10 +93,27 @@ class PipboyValue(object):
             return self.pipParent.pathStr() + pkey
         else:
             return ''
-        
+    
+    # Sets the user cache entry for given key to value.
+    def setUserCache(self, key, value, invalidateDepth = 0):
+        e = self._UserCacheEntry(value, invalidateDepth)
+        self._userCache[key] = e
+        return e
+    
+    # Returns the user cache entry for the given key or None    
+    def getUserCache(self, key):
+        try:
+            return self._userCache[key]
+        except:
+            return None
+         
     # Internal function emitting value updated events
     def _fireValueUpdatedEvent(self, value, pathObjs = list(), depth = 0):
         self._listenerLock.acquire()
+        for k in self._userCache:
+            e = self._userCache[k]
+            if e.invalidateDepth <= depth:
+                e.dirtyFlag = True
         for listener in self._valueUpdatedListeners:
             if self._valueUpdatedListeners[listener] < 0 or self._valueUpdatedListeners[listener] >= depth:
                 listener(self, value, pathObjs)
