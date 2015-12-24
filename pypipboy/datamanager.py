@@ -34,7 +34,8 @@ class PipboyValue(object):
             self.dirtyFlag = False
     
     # constructor
-    def __init__(self, pipId, pipType, valueType, value):
+    def __init__(self, datamanager, pipId, pipType, valueType, value):
+        self.datamanager = datamanager
         self.pipParent = None
         self.pipParentKey = None
         self.pipParentIndex = 0
@@ -131,16 +132,16 @@ class PipboyValue(object):
 
 # Represents a primitive value
 class PipboyPrimitiveValue(PipboyValue):
-    def __init__(self, pipId, valueType, value):
-        super(PipboyPrimitiveValue, self).__init__(pipId, ePipboyValueType.PRIMITIVE, valueType, value)
+    def __init__(self, datamanager, pipId, valueType, value):
+        super(PipboyPrimitiveValue, self).__init__(datamanager, pipId, ePipboyValueType.PRIMITIVE, valueType, value)
 
 
 
 # Represents an object value
 class PipboyObjectValue(PipboyValue):
     
-    def __init__(self, pipId):
-        super(PipboyObjectValue, self).__init__(pipId, ePipboyValueType.OBJECT, eValueType.OBJECT, dict())
+    def __init__(self, datamanager, pipId):
+        super(PipboyObjectValue, self).__init__(datamanager, pipId, ePipboyValueType.OBJECT, eValueType.OBJECT, dict())
         self._orderedList = list()
         keylist = list(self._value.keys())
         keylist.sort()
@@ -176,8 +177,8 @@ class PipboyObjectValue(PipboyValue):
 # Represents an array value
 class PipboyArrayValue(PipboyValue):
     
-    def __init__(self, pipId):
-        super(PipboyArrayValue, self).__init__(pipId, ePipboyValueType.ARRAY, eValueType.ARRAY, list())
+    def __init__(self, datamanager, pipId):
+        super(PipboyArrayValue, self).__init__(datamanager, pipId, ePipboyValueType.ARRAY, eValueType.ARRAY, list())
     
     def childCount(self):
         return len(self._value)
@@ -485,7 +486,7 @@ class PipboyDataManager:
             obj = self._valueMap[record.id]
         if record.type == eValueType.OBJECT:
             if not recordExists:
-                obj = PipboyObjectValue(record.id)
+                obj = PipboyObjectValue(self, record.id)
             for r in record.value[0]:
                 if not r[1] in self._valueMap:
                     raise RuntimeError('Tangling reference ' + str(r[1]))
@@ -515,7 +516,7 @@ class PipboyDataManager:
                     self._onRootObjectKnown()
         elif record.type == eValueType.ARRAY:
             if not recordExists:
-                obj = PipboyArrayValue(record.id)
+                obj = PipboyArrayValue(self, record.id)
             else:
                 obj._value = list()
             i = 0
@@ -534,7 +535,7 @@ class PipboyDataManager:
             if recordExists:
                 obj._value = record.value
             else:
-                obj = PipboyPrimitiveValue(record.id, record.type, record.value)
+                obj = PipboyPrimitiveValue(self, record.id, record.type, record.value)
                 self._valueMap[record.id] = obj
         if recordExists:
             eventtype = eValueUpdatedEventType.UPDATED
