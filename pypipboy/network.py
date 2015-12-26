@@ -46,6 +46,8 @@ class NetworkChannel:
         self._connectionListeners = set()
         self._messageListeners = set()
         self._aboutToConnect = False
+        self.hostLang = None
+        self.hostVersion = None
         self._logger = logging.getLogger('pypipboy.network.channel')
         
     # Returns a list of dicts representing the discovered hosts 
@@ -156,14 +158,17 @@ class NetworkChannel:
             self._doLostConnection()
         
     # sends an message over the network
-    def sendMessage(self, msg):
-        if self.isConnected:
+    def sendMessage(self, msg, socket = None):
+        if socket or self.isConnected:
             data = struct.pack("<I", msg.payloadSize) + struct.pack("<B", msg.msgType)
             if msg.payload and len(msg.payload) > 0:
                 data = data + msg.payload
-            if msg.msgType != 0:
+            if not socket and msg.msgType != 0:
                 self._logger.debug('Sending message: %s', data)
-            self._data_socket.send(data)
+            if socket:
+                socket.send(data)
+            else:
+                self._data_socket.send(data)
 
     # Registers a connection event listener
     def registerConnectionListener(self, listener):
