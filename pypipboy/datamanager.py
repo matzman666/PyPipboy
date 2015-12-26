@@ -6,6 +6,7 @@ import threading
 from pypipboy.types import eMessageType, eValueType, eRequestType
 from pypipboy.dataparser import DataUpdateParser, LocalMapUpdateParser, DataUpdateRecord
 from pypipboy.network import NetworkChannel, NetworkMessage
+from builtins import int
 
 
 
@@ -160,14 +161,16 @@ class PipboyObjectValue(PipboyValue):
                 return self._value[index]
             else:
                 return None
-        else:
-            if index < len(self._value):
+        elif type(index) == int:
+            if index >= 0 and index < len(self._value):
                 return self._orderedList[index]
             else:
                 return None
+        else:
+            return None
     
     def key(self, index):
-        if index < len(self._value):
+        if index >= 0 and index < len(self._value):
             return self._orderedList[index].pipParentKey
         else:
             return None
@@ -184,13 +187,13 @@ class PipboyArrayValue(PipboyValue):
         return len(self._value)
     
     def child(self, index):
-        if index < len(self._value):
+        if index >= 0 and index < len(self._value):
             return self._value[index]
         else:
             return None
     
     def key(self, index):
-        if index < len(self._value):
+        if index >= 0 and index < len(self._value):
             return index
         else:
             return None
