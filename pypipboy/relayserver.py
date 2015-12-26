@@ -164,7 +164,7 @@ class RelayController:
             self.handlers.clear()
     
     def _onMessageReceived(self, msg):
-        if msg.msgType != eMessageType.KEEP_ALIVE:
+        if msg.msgType != eMessageType.KEEP_ALIVE and msg.msgType != eMessageType.LOCAL_MAP_UPDATE:
             for h in self.handlers:
                 h.sendMessage(msg)
     
