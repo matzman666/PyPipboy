@@ -194,6 +194,7 @@ class NetworkChannel:
     
     # Internal function executed after a application level connection has been established
     def _doEstablishedConnection(self, socket):
+        self._fireConnectionEvent(True, 0, '')
         self.isConnected = True
         self._messageQueue = queue.Queue()
         self._receiveThreadFlag = True
@@ -202,7 +203,6 @@ class NetworkChannel:
         self._dispatchThreadFlag = True
         self._dispatchThread = threading.Thread(target = self._dispatchMessageLoop)
         self._dispatchThread.start()
-        self._fireConnectionEvent(True, 0, '')
         return True
     
     # Internal function executed after connection has been lost
