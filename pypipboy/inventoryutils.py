@@ -7,7 +7,7 @@ def inventoryGetItems(inventory, filterFunc = None):
     if sortedIds:
         for id in sortedIds.value():
             item = inventory.datamanager.getPipValueById(id.value())
-            if item and not filterFunc or filterFunc(item):
+            if item and (not filterFunc or filterFunc(item)):
                 retval.append(item)
     return retval
 
@@ -17,7 +17,7 @@ def inventoryGetItem(inventory, filterFunc):
     if sortedIds:
         for id in sortedIds.value():
             item = inventory.datamanager.getPipValueById(id.value())
-            if item and not filterFunc or filterFunc(item):
+            if item and (not filterFunc or filterFunc(item)):
                 return item
     return None
 

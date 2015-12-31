@@ -151,6 +151,9 @@ class PipboyObjectValue(PipboyValue):
             self._value[r].pipParentIndex = i
             self._orderedList.append(self._value[r])
             i += 1
+            
+    def value(self):
+        return self._value.copy()
         
     def childCount(self):
         return len(self._value)
@@ -182,6 +185,9 @@ class PipboyArrayValue(PipboyValue):
     
     def __init__(self, datamanager, pipId):
         super(PipboyArrayValue, self).__init__(datamanager, pipId, ePipboyValueType.ARRAY, eValueType.ARRAY, list())
+            
+    def value(self):
+        return self._value.copy()
     
     def childCount(self):
         return len(self._value)
@@ -478,7 +484,7 @@ class PipboyDataManager:
             else:
                 self._logger.debug('Command Result: ' + str(resp))
         elif msg.msgType == eMessageType.LOCAL_MAP_UPDATE:
-            parser = LocalMapUpdateParser();
+            parser = LocalMapUpdateParser()
             lmap = parser.parse(msg.payload)
             self._fireLocalMapUpdatedEvent(lmap)
         
