@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import struct
 from pypipboy.types import eValueType
 
@@ -76,7 +77,7 @@ class DataParser:
         count = 0
         while self.data[self.offset + count ] != 0:
             count += 1
-        value = self.data[self.offset:self.offset + count].decode()
+        value = self.data[self.offset:self.offset + count].decode(sys.getdefaultencoding(), 'replace')
         self.offset += count + 1
         return value
   
