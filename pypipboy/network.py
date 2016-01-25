@@ -26,7 +26,7 @@ class NetworkChannel:
     AUTODISCOVER_MESSAGE = b'{"cmd": "autodiscover"}'
     AUTODISCOVER_ADDR = b'<broadcast>'
     AUTODISCOVER_PORT = 28000
-    AUTODISCOVER_TIMEOUT = 3
+    AUTODISCOVER_TIMEOUT = 6
     
     PIPBOYAPP_PORT = 27000
     
@@ -90,7 +90,7 @@ class NetworkChannel:
                 # Open connection
                 data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._data_socket = data_socket
-                data_socket.settimeout(10)
+                data_socket.settimeout(20)
                 data_socket.connect((addr, port)) 
                 # Reveice host message header, should be 5 bytes
                 expected = 5
@@ -103,7 +103,7 @@ class NetworkChannel:
                         expected -= len(tmp)
                         msg_header = msg_header + tmp
                 except Exception as e:
-                    self._doLostConnection(-1, str(e))
+                    self._doLostConnection(-1, str(e) + ' (' + str(type(e)) + ')')
                 self._aboutToConnect = False
                 if len(msg_header) == 5:
                     # Parse header
@@ -237,7 +237,6 @@ class NetworkChannel:
         self._logger.debug("Starting receive thread.")
         self._receiveThreadRunning = True
         lastKeepAliveTime = time.time()
-        #self._data_socket.settimeout(10)
         while self._receiveThreadFlag:
             # First receive message header, should be 5 bytes
             expected = 5
@@ -251,7 +250,7 @@ class NetworkChannel:
                     msg_header = msg_header + tmp
             except Exception as e:
                 if self._receiveThreadFlag:
-                    self._doLostConnection(-1, str(e))
+                    self._doLostConnection(-2, str(e) + ' (' + str(type(e)) + ')')
                 break
             # Parse header
             payload_size = struct.unpack("<I",msg_header[0:4])[0]
@@ -268,7 +267,7 @@ class NetworkChannel:
                     payload = payload + tmp
             except Exception as e:
                 if self._receiveThreadFlag:
-                    self._doLostConnection(-1, str(e))
+                    self._doLostConnection(-3, str(e) + ' (' + str(type(e)) + ')')
                 break
             if msg_type != 0:
                 self._logger.debug("Received message with type %i and size %i.", msg_type, payload_size)
