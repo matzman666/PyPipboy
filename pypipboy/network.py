@@ -90,7 +90,7 @@ class NetworkChannel:
                 # Open connection
                 data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._data_socket = data_socket
-                data_socket.settimeout(20)
+                data_socket.settimeout(15)
                 data_socket.connect((addr, port)) 
                 # Reveice host message header, should be 5 bytes
                 expected = 5
@@ -163,11 +163,10 @@ class NetworkChannel:
             data = struct.pack("<I", msg.payloadSize) + struct.pack("<B", msg.msgType)
             if msg.payload and len(msg.payload) > 0:
                 data = data + msg.payload
-            if not socket and msg.msgType != 0:
-                self._logger.debug('Sending message: %s', data)
             if socket:
                 socket.send(data)
             else:
+                self._logger.debug('Sending message: %s', data)
                 self._data_socket.send(data)
 
     # Registers a connection event listener
@@ -237,6 +236,7 @@ class NetworkChannel:
         self._logger.debug("Starting receive thread.")
         self._receiveThreadRunning = True
         lastKeepAliveTime = time.time()
+        self._data_socket.settimeout(60)
         while self._receiveThreadFlag:
             # First receive message header, should be 5 bytes
             expected = 5
@@ -269,8 +269,7 @@ class NetworkChannel:
                 if self._receiveThreadFlag:
                     self._doLostConnection(-3, str(e) + ' (' + str(type(e)) + ')')
                 break
-            if msg_type != 0:
-                self._logger.debug("Received message with type %i and size %i.", msg_type, payload_size)
+            self._logger.debug("Received message with type %i and size %i.", msg_type, payload_size)
             if msg_type == eMessageType.KEEP_ALIVE:
                 # Keep Alive works as follows:
                 # The Server does not like it when I send a keep alive too early
