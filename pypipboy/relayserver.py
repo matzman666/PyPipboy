@@ -6,6 +6,7 @@ import threading
 import logging
 import struct
 import time
+import traceback, sys
 from .network import NetworkMessage
 from .dataencoder import DataUpdateEncoder
 from .types import eMessageType
@@ -39,8 +40,9 @@ class RelayController:
                     time.sleep(1)
                     for h in self.controller.handlers:
                         h.sendKeepAlive()
-            except Exception as e:
-                print('Caught Exception: ' + str(e))
+            except:
+                traceback.print_exc(file=sys.stdout)
+                time.sleep(1) # Just to make sure that the error is correctly written into the log file
         def shutdown(self):
             self.keepAliveThreadFlag = False
             self.keepAliveThread.join()

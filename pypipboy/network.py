@@ -7,6 +7,7 @@ import time
 import logging
 import queue
 import struct
+import traceback, sys
 from pypipboy.types import eMessageType
 
 
@@ -233,92 +234,102 @@ class NetworkChannel:
         
     # Internal thread function for receiving messages
     def _receiveMessageLoop(self):
-        self._logger.debug("Starting receive thread.")
-        self._receiveThreadRunning = True
-        lastKeepAliveTime = time.time()
-        self._data_socket.settimeout(60)
-        while self._receiveThreadFlag:
-            # First receive message header, should be 5 bytes
-            expected = 5
-            msg_header = bytes()
-            try:
-                while expected > 0:
-                    tmp = self._data_socket.recv(expected)
-                    if len(tmp) == 0:
-                        raise Exception('Host terminated connection.')
-                    expected -= len(tmp)
-                    msg_header = msg_header + tmp
-            except Exception as e:
-                if self._receiveThreadFlag:
-                    self._doLostConnection(-2, str(e) + ' (' + str(type(e)) + ')')
-                break
-            # Parse header
-            payload_size = struct.unpack("<I",msg_header[0:4])[0]
-            msg_type = struct.unpack("<B",bytes([msg_header[4]]))[0]
-            # Receive payload
-            expected = payload_size
-            payload = bytes()
-            try:
-                while expected > 0:
-                    tmp = self._data_socket.recv(expected)
-                    if len(tmp) == 0:
-                        raise Exception('Host terminated connection.')
-                    expected -= len(tmp)
-                    payload = payload + tmp
-            except Exception as e:
-                if self._receiveThreadFlag:
-                    self._doLostConnection(-3, str(e) + ' (' + str(type(e)) + ')')
-                break
-            self._logger.debug("Received message with type %i and size %i.", msg_type, payload_size)
-            if msg_type == eMessageType.KEEP_ALIVE:
-                # Keep Alive works as follows:
-                # The Server does not like it when I send a keep alive too early
-                # Both server and client regularly send keep alives messages, when no other messages are send.
-                # This means that the server may not send a keep alive message for a long time when enough other
-                # messages are send. 
-                # The server cuts the connection when no keep alive was received for some time.
-                # Thus I use following keep alive strategy here.
-                # When I receive a keep alive from the server, I send one back.
-                # I keep a timer that runs out after some time, and is reset whenever I send a keep alive.
-                # "hen a non keep-alive package has been received and the timer has run out, I send a keep alive
-                self.sendMessage(NetworkMessage(eMessageType.KEEP_ALIVE))
-                lastKeepAliveTime = time.time()
-            else:
-                # Put message into message queue
-                self._messageQueue.put(NetworkMessage(msg_type, payload_size, payload))
-                # Check keep alive timer
-                if lastKeepAliveTime + self.KEEP_ALIVE_TIMER < time.time():
+        try:
+            self._logger.debug("Starting receive thread.")
+            self._receiveThreadRunning = True
+            lastKeepAliveTime = time.time()
+            self._data_socket.settimeout(60)
+            while self._receiveThreadFlag:
+                # First receive message header, should be 5 bytes
+                expected = 5
+                msg_header = bytes()
+                try:
+                    while expected > 0:
+                        tmp = self._data_socket.recv(expected)
+                        if len(tmp) == 0:
+                            raise Exception('Host terminated connection.')
+                        expected -= len(tmp)
+                        msg_header = msg_header + tmp
+                except Exception as e:
+                    if self._receiveThreadFlag:
+                        self._doLostConnection(-2, str(e) + ' (' + str(type(e)) + ')')
+                    break
+                # Parse header
+                payload_size = struct.unpack("<I",msg_header[0:4])[0]
+                msg_type = struct.unpack("<B",bytes([msg_header[4]]))[0]
+                # Receive payload
+                expected = payload_size
+                payload = bytes()
+                try:
+                    while expected > 0:
+                        tmp = self._data_socket.recv(expected)
+                        if len(tmp) == 0:
+                            raise Exception('Host terminated connection.')
+                        expected -= len(tmp)
+                        payload = payload + tmp
+                except Exception as e:
+                    if self._receiveThreadFlag:
+                        self._doLostConnection(-3, str(e) + ' (' + str(type(e)) + ')')
+                    break
+                self._logger.debug("Received message with type %i and size %i.", msg_type, payload_size)
+                if msg_type == eMessageType.KEEP_ALIVE:
+                    # Keep Alive works as follows:
+                    # The Server does not like it when I send a keep alive too early
+                    # Both server and client regularly send keep alives messages, when no other messages are send.
+                    # This means that the server may not send a keep alive message for a long time when enough other
+                    # messages are send. 
+                    # The server cuts the connection when no keep alive was received for some time.
+                    # Thus I use following keep alive strategy here.
+                    # When I receive a keep alive from the server, I send one back.
+                    # I keep a timer that runs out after some time, and is reset whenever I send a keep alive.
+                    # "hen a non keep-alive package has been received and the timer has run out, I send a keep alive
                     self.sendMessage(NetworkMessage(eMessageType.KEEP_ALIVE))
                     lastKeepAliveTime = time.time()
-        self._logger.debug("Shutting down receive thread.")
-        self._receiveThreadRunning = False
+                else:
+                    # Put message into message queue
+                    self._messageQueue.put(NetworkMessage(msg_type, payload_size, payload))
+                    # Check keep alive timer
+                    if lastKeepAliveTime + self.KEEP_ALIVE_TIMER < time.time():
+                        self.sendMessage(NetworkMessage(eMessageType.KEEP_ALIVE))
+                        lastKeepAliveTime = time.time()
+            self._logger.debug("Shutting down receive thread.")
+            self._receiveThreadRunning = False
+        except:
+            traceback.print_exc(file=sys.stdout)
+            time.sleep(1) # Just to make sure that the error is correctly written into the log file
+            raise
                     
         
     
     # Internal thread function for dispatching received message events
     def _dispatchMessageLoop(self):
-        self._logger.debug("Starting dispatch thread.")
-        self._dispatchThreadRunning = True
-        while self._dispatchThreadFlag:
-            msg = self._messageQueue.get(True)
-            if msg:
-                self._logger.debug("Dispatching message with type %i and size %i", msg.msgType, msg.payloadSize)
-            #try:
-            if msg == None: # just a wake-up call
-                pass
-            elif msg.msgType == eMessageType.DATA_UPDATE:
-                self._fireMessageEvent(msg)
-            elif msg.msgType == eMessageType.LOCAL_MAP_UPDATE:
-                self._fireMessageEvent(msg)
-            elif msg.msgType == eMessageType.COMMAND_RESULT:
-                self._fireMessageEvent(msg)
-            else:
-                self._logger.error('Received unknown message type %i.', msg.msgType)
-            #except Exception as e:
-            #    self._logger.error('Exception caught while handling message: %s', e)
-            self._messageQueue.task_done()
-        self._dispatchThreadRunning = False
-        self._logger.debug("Shutting down dispatch thread.")
+        try:
+            self._logger.debug("Starting dispatch thread.")
+            self._dispatchThreadRunning = True
+            while self._dispatchThreadFlag:
+                msg = self._messageQueue.get(True)
+                if msg:
+                    self._logger.debug("Dispatching message with type %i and size %i", msg.msgType, msg.payloadSize)
+                #try:
+                if msg == None: # just a wake-up call
+                    pass
+                elif msg.msgType == eMessageType.DATA_UPDATE:
+                    self._fireMessageEvent(msg)
+                elif msg.msgType == eMessageType.LOCAL_MAP_UPDATE:
+                    self._fireMessageEvent(msg)
+                elif msg.msgType == eMessageType.COMMAND_RESULT:
+                    self._fireMessageEvent(msg)
+                else:
+                    self._logger.error('Received unknown message type %i.', msg.msgType)
+                #except Exception as e:
+                #    self._logger.error('Exception caught while handling message: %s', e)
+                self._messageQueue.task_done()
+            self._dispatchThreadRunning = False
+            self._logger.debug("Shutting down dispatch thread.")
+        except:
+            traceback.print_exc(file=sys.stdout)
+            time.sleep(1) # Just to make sure that the error is correctly written into the log file
+            raise
         
     def join(self):
         if self._receiveThread:
