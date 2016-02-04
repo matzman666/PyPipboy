@@ -160,6 +160,7 @@ class PipboyObjectValue(PipboyValue):
     
     def child(self, index):
         if type(index) == str:
+            index = index.lower()
             if index in self._value:
                 return self._value[index]
             else:
@@ -502,7 +503,7 @@ class PipboyDataManager:
                 child = self._valueMap[r[1]]
                 child.pipParent = obj
                 child.pipParentKey = r[0]
-                obj._value[r[0]] = child
+                obj._value[child.pipParentKey.lower()] = child
             i = 0
             keylist = list(obj._value.keys())
             keylist.sort()
